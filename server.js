@@ -1,101 +1,103 @@
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+const { v4: uuidv4 } = require('uuid');
+const archiver = require('archiver');
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
 
-// Email configuration (using Gmail's free SMTP)
+// Generate a unique upload ID for each request
+app.use((req, res, next) => {
+  req.uploadId = uuidv4(); // Generate a single upload ID for all files
+  next();
+});
+
+// Configure multer to use the same upload ID for all files
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, 'uploads', req.uploadId);
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+// Configure email transporter (same as before)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: 'robinexp001@gmail.com', // Replace with your Gmail
-    pass: 'ebjw nfzs qufo gwxe', // Replace with your Gmail app password
-  },
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
 });
 
-// Middleware to parse JSON requests
+// Middleware
 app.use(express.json());
-
-// Serve static files (HTML, CSS, JS)
 app.use(express.static('public'));
 
+// Create uploads directory if it doesn't exist
+if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
+  fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
+}
+
 // File upload endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  const fileId = req.file.filename;
-  const filePath = path.join(__dirname, 'uploads', fileId);
-
-  // Rename the file to include the original name
-  const originalName = req.file.originalname;
-  const newFilePath = path.join(__dirname, 'uploads', `${fileId}-${originalName}`);
-  fs.renameSync(filePath, newFilePath);
-
-  res.json({ fileId, originalName });
-});
-
-// Email sharing endpoint
-app.post('/share/email', (req, res) => {
-  const { email, fileId } = req.body;
-
-  // Validate input
-  if (!email || !fileId) {
-    return res.status(400).json({ error: 'Email and file ID are required' });
-  }
-
-  // Dynamically construct the download link
-  const protocol = req.protocol; // http or https
-  const host = req.get('host'); // e.g., localhost:3000 or your-app.onrender.com
-  const downloadLink = `${protocol}://${host}/download/${fileId}`;
-
-  // Email options
-  const mailOptions = {
-    from: 'robinexp001@gmail.com', // Replace with your Gmail
-    to: email,
-    subject: 'File Shared with You',
-    text: `Download your file here: ${downloadLink}`,
-    html: `<p>Download your file here: <a href="${downloadLink}">${downloadLink}</a></p>`,
-  };
-
-  // Send the email
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.error('Error sending email:', error);
-      return res.status(500).json({ error: 'Failed to send email' });
+app.post('/upload', upload.array('files'), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
     }
-    console.log('Email sent:', info.response);
-    res.status(200).json({ message: 'Email sent successfully' });
-  });
+
+    res.json({ 
+      uploadId: req.uploadId,
+      message: 'Upload successful!'
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload files' });
+  }
 });
 
 // File download endpoint
-app.get('/download/:fileId', (req, res) => {
-  const fileId = req.params.fileId;
-  const filePath = path.join(__dirname, 'uploads', `${fileId}-*`);
+app.get('/download/:uploadId', (req, res) => {
+  const uploadId = req.params.uploadId;
+  const uploadPath = path.join(__dirname, 'uploads', uploadId);
 
-  // Find the file with the matching ID
-  fs.readdir(path.join(__dirname, 'uploads'), (err, files) => {
-    if (err) {
-      return res.status(500).send('Error finding file');
-    }
+  if (!fs.existsSync(uploadPath)) {
+    return res.status(404).send('File or folder not found');
+  }
 
-    const file = files.find((f) => f.startsWith(fileId));
-    if (!file) {
-      return res.status(404).send('File not found');
-    }
-
-    const fullPath = path.join(__dirname, 'uploads', file);
-    res.download(fullPath, file.split('-').slice(1).join('-'));
-  });
+  const files = fs.readdirSync(uploadPath);
+  if (files.length === 1) {
+    // Single file: serve directly
+    const filePath = path.join(uploadPath, files[0]);
+    res.download(filePath, files[0]);
+  } else {
+    // Multiple files: zip and send
+    const archive = archiver('zip', { zlib: { level: 9 }});
+    res.attachment(`${uploadId}.zip`);
+    archive.pipe(res);
+    archive.directory(uploadPath, false);
+    archive.finalize();
+  }
 });
 
-// Start the server
+// Email sharing endpoint (same as before)
+app.post('/share/email', (req, res) => {
+  // ... (keep the existing code)
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

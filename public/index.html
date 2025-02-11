@@ -33,6 +33,36 @@
       margin-bottom: 20px;
     }
 
+    .upload-options {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .upload-btn {
+      background: #666; /* Grey for inactive buttons */
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s ease;
+    }
+
+    .upload-btn.active {
+      background: #2575fc; /* Blue for active button */
+    }
+
+    .upload-btn:hover {
+      background: #555; /* Slightly lighter grey on hover */
+    }
+
+    .upload-btn.active:hover {
+      background: #1a5bbf; /* Darker blue on hover */
+    }
+
     .upload-box {
       border: 2px dashed rgba(255, 255, 255, 0.5);
       border-radius: 10px;
@@ -117,14 +147,26 @@
     .file-link:hover {
       text-decoration: underline;
     }
+
+    .success-message {
+      color: #4caf50;
+      font-weight: bold;
+      margin-top: 20px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>File Sharing App</h1>
+    <div class="upload-options">
+      <button class="upload-btn" id="fileUploadBtn">Upload Files</button>
+      <button class="upload-btn" id="folderUploadBtn">Upload Folder</button>
+    </div>
     <div class="upload-box" id="uploadBox">
       <p>Drag & Drop or <span style="color: #2575fc;">Click to Upload</span></p>
-      <input type="file" id="fileInput" />
+      <input type="file" id="fileInput" multiple />
+      <input type="file" id="folderInput" webkitdirectory mozdirectory />
     </div>
     <div class="progress-bar" id="progressBar">
       <div></div>
@@ -134,14 +176,39 @@
       <input type="email" id="emailInput" placeholder="Enter email" />
       <button onclick="shareViaEmail()">Share via Email</button>
     </div>
+    <div class="success-message" id="successMessage">Email sent successfully!</div>
   </div>
 
   <script>
     const uploadBox = document.getElementById('uploadBox');
     const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
+    const fileUploadBtn = document.getElementById('fileUploadBtn');
+    const folderUploadBtn = document.getElementById('folderUploadBtn');
     const progressBar = document.getElementById('progressBar');
+    const progressBarInner = progressBar.querySelector('div');
     const shareSection = document.getElementById('shareSection');
     const fileLink = document.getElementById('fileLink');
+    const successMessage = document.getElementById('successMessage');
+
+    // Set default mode to "Upload Files"
+    let uploadMode = 'files';
+
+    // Toggle upload mode
+    fileUploadBtn.addEventListener('click', () => {
+      uploadMode = 'files';
+      fileUploadBtn.classList.add('active');
+      folderUploadBtn.classList.remove('active');
+    });
+
+    folderUploadBtn.addEventListener('click', () => {
+      uploadMode = 'folder';
+      folderUploadBtn.classList.add('active');
+      fileUploadBtn.classList.remove('active');
+    });
+
+    // Initialize with "Files" mode active
+    fileUploadBtn.classList.add('active');
 
     // Drag and drop functionality
     uploadBox.addEventListener('dragover', (e) => {
@@ -156,51 +223,83 @@
     uploadBox.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadBox.classList.remove('dragover');
-      fileInput.files = e.dataTransfer.files;
-      uploadFile();
+      if (uploadMode === 'files') {
+        fileInput.files = e.dataTransfer.files;
+      } else {
+        folderInput.files = e.dataTransfer.files;
+      }
+      uploadFiles();
     });
 
-    uploadBox.addEventListener('click', () => fileInput.click());
+    uploadBox.addEventListener('click', () => {
+      if (uploadMode === 'files') {
+        fileInput.click();
+      } else {
+        folderInput.click();
+      }
+    });
 
-    fileInput.addEventListener('change', uploadFile);
+    // Handle file/folder selection
+    fileInput.addEventListener('change', uploadFiles);
+    folderInput.addEventListener('change', uploadFiles);
 
-    async function uploadFile() {
-      const file = fileInput.files[0];
-      if (!file) return;
+    async function uploadFiles() {
+      const files = uploadMode === 'files' ? fileInput.files : folderInput.files;
+      if (!files || files.length === 0) return;
 
       const formData = new FormData();
-      formData.append('file', file);
+      for (const file of files) {
+        formData.append('files', file);
+      }
 
       progressBar.style.display = 'block';
-      const progressBarInner = progressBar.querySelector('div');
+      progressBarInner.style.width = '0%';
 
-      const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload', true);
 
-      const data = await response.json();
-      const fileId = data.fileId;
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = (e.loaded / e.total) * 100;
+          progressBarInner.style.width = `${percent}%`;
+        }
+      };
 
-      const downloadLink = `https://your-app.onrender.com/download/${fileId}`;
-      fileLink.href = downloadLink;
-      fileLink.textContent = downloadLink;
-      shareSection.style.display = 'block';
-      progressBar.style.display = 'none';
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          const downloadLink = `${window.location.origin}/download/${data.uploadId}`;
+          fileLink.href = downloadLink;
+          fileLink.textContent = downloadLink;
+          shareSection.style.display = 'block';
+          progressBar.style.display = 'none';
+        } else {
+          alert('Upload failed. Please try again.');
+        }
+      };
+
+      xhr.send(formData);
     }
 
     async function shareViaEmail() {
       const email = document.getElementById('emailInput').value;
-      const fileId = fileLink.href.split('/').pop();
+      const uploadId = fileLink.href.split('/').pop();
 
       const response = await fetch('/share/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, fileId }),
+        body: JSON.stringify({ email, uploadId }),
       });
 
-      const result = await response.text();
-      alert(result);
+      const result = await response.json();
+      if (result.message) {
+        successMessage.style.display = 'block';
+        setTimeout(() => {
+          successMessage.style.display = 'none';
+        }, 3000);
+      } else {
+        alert('Failed to send email. Please try again.');
+      }
     }
   </script>
 </body>
