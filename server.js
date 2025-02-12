@@ -1,6 +1,7 @@
 // Load environment variables
 require('dotenv').config();
 
+const cors = require('cors');
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -10,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 const archiver = require('archiver');
 
 const app = express();
+app.use(cors());
 
 // Generate a unique upload ID for each request
 app.use((req, res, next) => {
@@ -92,8 +94,34 @@ app.get('/download/:uploadId', (req, res) => {
 });
 
 // Email sharing endpoint (same as before)
-app.post('/share/email', (req, res) => {
-  // ... (keep the existing code)
+app.post('/share/email', async (req, res) => {
+  try {
+      const { email, uploadId } = req.body;
+      const downloadLink = `${req.protocol}://${req.get('host')}/download/${uploadId}`;
+
+      // Send email
+      await transporter.sendMail({
+          from: process.env.GMAIL_USER,
+          to: email,
+          subject: 'File Sharing Notification',
+          html: `
+              <h2>File Shared with You</h2>
+              <p>Download your files here: <a href="${downloadLink}">${downloadLink}</a></p>
+              <p>This link will expire in 7 days.</p>
+          `
+      });
+
+      res.json({ 
+          success: true,
+          message: 'Email sent successfully'
+      });
+  } catch (error) {
+      console.error('Email send error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to send email'
+      });
+  }
 });
 
 // Start server

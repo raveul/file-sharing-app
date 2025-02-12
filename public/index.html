@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>File Sharing App</title>
+  <title>NBC Transfer</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
     /* General Styles */
     body {
       font-family: 'Arial', sans-serif;
-      background: linear-gradient(135deg, #6a11cb, #2575fc);
-      color: #fff;
+      background: #f5f7fa;
+      color: #333;
       margin: 0;
       padding: 0;
       display: flex;
@@ -19,82 +20,168 @@
     }
 
     .container {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
+      background: #fff;
+      border-radius: 12px;
       padding: 30px;
-      width: 400px;
+      width: 450px;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
-      font-size: 2rem;
+      font-size: 2.5rem;
       margin-bottom: 20px;
-    }
-
-    .upload-options {
+      color: #2575fc;
       display: flex;
-      gap: 10px;
+      align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
+      gap: 10px;
     }
 
-    .upload-btn {
-      background: #666; /* Grey for inactive buttons */
-      color: #fff;
-      border: none;
+    h1 i {
+      font-size: 2.2rem;
+      color: #4caf50;
+    }
+
+    /* Toggle Switch Styles */
+    .toggle-container {
+      display: flex;
+      background: #f0f0f0;
+      border-radius: 8px;
+      padding: 4px;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .toggle-option {
+      flex: 1;
       padding: 10px 20px;
-      border-radius: 5px;
+      text-align: center;
       cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.3s ease;
+      z-index: 1;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #666;
     }
 
-    .upload-btn.active {
-      background: #2575fc; /* Blue for active button */
+    .toggle-option.active {
+      color: #4caf50;
     }
 
-    .upload-btn:hover {
-      background: #555; /* Slightly lighter grey on hover */
+    .toggle-slider {
+      position: absolute;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      height: calc(100% - 8px);
     }
 
-    .upload-btn.active:hover {
-      background: #1a5bbf; /* Darker blue on hover */
-    }
-
+    /* Upload Box */
     .upload-box {
-      border: 2px dashed rgba(255, 255, 255, 0.5);
-      border-radius: 10px;
-      padding: 20px;
+      border: 2px dashed #2575fc;
+      border-radius: 12px;
+      padding: 30px;
       margin: 20px 0;
       cursor: pointer;
       transition: all 0.3s ease;
+      background: #f5f7fa;
     }
 
     .upload-box:hover {
-      border-color: #fff;
-      background: rgba(255, 255, 255, 0.1);
+      border-color: #1a5bbf;
+      background: #e8f0fe;
     }
 
     .upload-box.dragover {
-      border-color: #2575fc;
-      background: rgba(37, 117, 252, 0.1);
+      border-color: #4caf50;
+      background: #e8f0fe;
     }
 
     .upload-box p {
       margin: 0;
       font-size: 1rem;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .upload-box p i {
+      font-size: 1.2rem;
+      color: #2575fc;
     }
 
     .upload-box input[type="file"] {
-      display: none;
+      display: none; /* Hide the file input buttons */
     }
 
+    /* File Preview */
+    .file-preview {
+      margin: 20px 0;
+      text-align: left;
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      background: #f9f9f9;
+    }
+
+    .file-preview p {
+      margin: 5px 0;
+      font-size: 0.9rem;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-preview p i {
+      color: #2575fc;
+    }
+
+    .file-preview .folder-name {
+      font-weight: bold;
+      color: #4caf50;
+    }
+
+    /* Upload Button */
+    .upload-button {
+      background: #2575fc;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s ease;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .upload-button:hover {
+      background: #1a5bbf;
+    }
+
+    .upload-button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    /* Progress Bar */
     .progress-bar {
       width: 100%;
       height: 10px;
-      background: rgba(255, 255, 255, 0.2);
+      background: #e0e0e0;
       border-radius: 5px;
       margin: 20px 0;
       overflow: hidden;
@@ -104,11 +191,12 @@
     .progress-bar div {
       height: 100%;
       width: 0;
-      background: #2575fc;
+      background: #4caf50;
       border-radius: 5px;
       transition: width 0.3s ease;
     }
 
+    /* Share Section */
     .share-section {
       display: none;
       margin-top: 20px;
@@ -117,21 +205,32 @@
     .share-section input[type="email"] {
       width: 100%;
       padding: 10px;
-      border: none;
-      border-radius: 5px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
       margin: 10px 0;
       font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .share-section input[type="email"]:focus {
+      border-color: #2575fc;
     }
 
     .share-section button {
       background: #2575fc;
       color: #fff;
       border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
+      padding: 12px 24px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
       transition: background 0.3s ease;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .share-section button:hover {
@@ -142,75 +241,172 @@
       color: #2575fc;
       text-decoration: none;
       word-break: break-all;
+      display: block;
+      margin: 10px 0;
     }
 
     .file-link:hover {
       text-decoration: underline;
     }
 
+    /* Success Message */
     .success-message {
       color: #4caf50;
       font-weight: bold;
       margin-top: 20px;
       display: none;
     }
+
+    /* Footer */
+    .footer {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .footer a {
+      color: #2575fc;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>File Sharing App</h1>
-    <div class="upload-options">
-      <button class="upload-btn" id="fileUploadBtn">Upload Files</button>
-      <button class="upload-btn" id="folderUploadBtn">Upload Folder</button>
+    <h1>
+      <i class="fas fa-paper-plane"></i>
+      NBC Transfer
+    </h1>
+
+    <!-- Toggle Switch -->
+    <div class="toggle-container" id="toggleContainer">
+      <div class="toggle-slider" id="toggleSlider"></div>
+      <div class="toggle-option active" id="fileToggle">
+        <i class="fas fa-file-upload"></i>
+        Files
+      </div>
+      <div class="toggle-option" id="folderToggle">
+        <i class="fas fa-folder-open"></i>
+        Folder
+      </div>
     </div>
+
+    <!-- Upload Box -->
     <div class="upload-box" id="uploadBox">
-      <p>Drag & Drop or <span style="color: #2575fc;">Click to Upload</span></p>
+      <p>
+        <i class="fas fa-cloud-upload-alt"></i>
+        Drag & Drop or <span style="color: #2575fc;">Click to Upload</span>
+      </p>
       <input type="file" id="fileInput" multiple />
-      <input type="file" id="folderInput" webkitdirectory mozdirectory />
+      <input type="file" id="folderInput" webkitdirectory />
     </div>
+
+    <!-- File Preview -->
+    <div class="file-preview" id="filePreview"></div>
+
+    <!-- Upload Button -->
+    <button class="upload-button" id="uploadButton" disabled>
+      <i class="fas fa-upload"></i>
+      Start Upload
+    </button>
+
+    <!-- Progress Bar -->
     <div class="progress-bar" id="progressBar">
       <div></div>
     </div>
+
+    <!-- Share Section -->
     <div class="share-section" id="shareSection">
       <p>Share this link: <a id="fileLink" class="file-link" target="_blank"></a></p>
-      <input type="email" id="emailInput" placeholder="Enter email" />
-      <button onclick="shareViaEmail()">Share via Email</button>
+      <input type="email" id="emailInput" placeholder="Enter recipient's email" />
+      <button onclick="shareViaEmail()">
+        <i class="fas fa-paper-plane"></i>
+        Send Email
+      </button>
     </div>
-    <div class="success-message" id="successMessage">Email sent successfully!</div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="successMessage">
+      <i class="fas fa-check-circle"></i>
+      Email sent successfully!
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>
+        Created by
+        <a href="mailto:robii4u@gmail.com" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-user"></i>
+          Robin
+        </a>
+      </p>
+    </div>
   </div>
 
   <script>
     const uploadBox = document.getElementById('uploadBox');
     const fileInput = document.getElementById('fileInput');
     const folderInput = document.getElementById('folderInput');
-    const fileUploadBtn = document.getElementById('fileUploadBtn');
-    const folderUploadBtn = document.getElementById('folderUploadBtn');
+    const uploadButton = document.getElementById('uploadButton');
     const progressBar = document.getElementById('progressBar');
     const progressBarInner = progressBar.querySelector('div');
     const shareSection = document.getElementById('shareSection');
     const fileLink = document.getElementById('fileLink');
     const successMessage = document.getElementById('successMessage');
+    const filePreview = document.getElementById('filePreview');
+    const toggleContainer = document.getElementById('toggleContainer');
+    const toggleSlider = document.getElementById('toggleSlider');
+    const fileToggle = document.getElementById('fileToggle');
+    const folderToggle = document.getElementById('folderToggle');
 
-    // Set default mode to "Upload Files"
     let uploadMode = 'files';
+    let selectedFiles = null;
 
-    // Toggle upload mode
-    fileUploadBtn.addEventListener('click', () => {
+    // Toggle Switch Logic
+    function updateToggle() {
+      const activeToggle = uploadMode === 'files' ? fileToggle : folderToggle;
+      const toggleRect = activeToggle.getBoundingClientRect();
+      const containerRect = toggleContainer.getBoundingClientRect();
+      
+      toggleSlider.style.width = `${toggleRect.width}px`;
+      toggleSlider.style.transform = `translateX(${toggleRect.left - containerRect.left}px)`;
+    }
+
+    fileToggle.addEventListener('click', () => {
       uploadMode = 'files';
-      fileUploadBtn.classList.add('active');
-      folderUploadBtn.classList.remove('active');
+      fileToggle.classList.add('active');
+      folderToggle.classList.remove('active');
+      updateToggle();
     });
 
-    folderUploadBtn.addEventListener('click', () => {
+    folderToggle.addEventListener('click', () => {
       uploadMode = 'folder';
-      folderUploadBtn.classList.add('active');
-      fileUploadBtn.classList.remove('active');
+      folderToggle.classList.add('active');
+      fileToggle.classList.remove('active');
+      updateToggle();
     });
 
-    // Initialize with "Files" mode active
-    fileUploadBtn.classList.add('active');
+    // File Selection Handlers
+    fileInput.addEventListener('change', () => {
+      selectedFiles = fileInput.files;
+      uploadButton.disabled = false;
+      updatePreview();
+    });
 
-    // Drag and drop functionality
+    folderInput.addEventListener('change', () => {
+      selectedFiles = folderInput.files;
+      uploadButton.disabled = false;
+      updatePreview();
+    });
+
+    // Drag and Drop Handlers
     uploadBox.addEventListener('dragover', (e) => {
       e.preventDefault();
       uploadBox.classList.add('dragover');
@@ -225,35 +421,46 @@
       uploadBox.classList.remove('dragover');
       if (uploadMode === 'files') {
         fileInput.files = e.dataTransfer.files;
+        selectedFiles = fileInput.files;
       } else {
         folderInput.files = e.dataTransfer.files;
+        selectedFiles = folderInput.files;
       }
-      uploadFiles();
+      uploadButton.disabled = false;
+      updatePreview();
     });
 
-    uploadBox.addEventListener('click', () => {
+    // Update File Preview
+    function updatePreview() {
+      filePreview.innerHTML = ''; // Clear previous preview
+
+      if (!selectedFiles || selectedFiles.length === 0) return;
+
       if (uploadMode === 'files') {
-        fileInput.click();
+        Array.from(selectedFiles).forEach((file) => {
+          const fileItem = document.createElement('p');
+          fileItem.innerHTML = `<i class="fas fa-file"></i> ${file.name}`;
+          filePreview.appendChild(fileItem);
+        });
       } else {
-        folderInput.click();
+        const folderItem = document.createElement('p');
+        folderItem.innerHTML = `<i class="fas fa-folder"></i> <span class="folder-name">${selectedFiles[0].webkitRelativePath.split('/')[0]}</span> (${selectedFiles.length} files)`;
+        filePreview.appendChild(folderItem);
       }
-    });
+    }
 
-    // Handle file/folder selection
-    fileInput.addEventListener('change', uploadFiles);
-    folderInput.addEventListener('change', uploadFiles);
-
-    async function uploadFiles() {
-      const files = uploadMode === 'files' ? fileInput.files : folderInput.files;
-      if (!files || files.length === 0) return;
+    // Upload Button Click Handler
+    uploadButton.addEventListener('click', async () => {
+      if (!selectedFiles || selectedFiles.length === 0) return;
 
       const formData = new FormData();
-      for (const file of files) {
+      for (const file of selectedFiles) {
         formData.append('files', file);
       }
 
       progressBar.style.display = 'block';
       progressBarInner.style.width = '0%';
+      uploadButton.disabled = true;
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/upload', true);
@@ -279,28 +486,83 @@
       };
 
       xhr.send(formData);
+    });
+
+    // Add click handler for upload box
+uploadBox.addEventListener('click', () => {
+    if (uploadMode === 'files') {
+        fileInput.click();
+    } else {
+        folderInput.click();
+    }
+});
+
+// Fix drag-and-drop handler
+uploadBox.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadBox.classList.remove('dragover');
+    
+    const dataTransfer = new DataTransfer();
+    for (const file of e.dataTransfer.files) {
+        dataTransfer.items.add(file);
     }
 
+    if (uploadMode === 'files') {
+        fileInput.files = dataTransfer.files;
+        selectedFiles = fileInput.files;
+    } else {
+        folderInput.files = dataTransfer.files;
+        selectedFiles = folderInput.files;
+    }
+    
+    uploadButton.disabled = false;
+    updatePreview();
+});
+
+    // Email Sharing Handler
     async function shareViaEmail() {
-      const email = document.getElementById('emailInput').value;
-      const uploadId = fileLink.href.split('/').pop();
+    const emailInput = document.getElementById('emailInput');
+    const email = emailInput.value.trim();
+    const uploadId = fileLink.href.split('/').pop();
 
-      const response = await fetch('/share/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, uploadId }),
-      });
-
-      const result = await response.json();
-      if (result.message) {
-        successMessage.style.display = 'block';
-        setTimeout(() => {
-          successMessage.style.display = 'none';
-        }, 3000);
-      } else {
-        alert('Failed to send email. Please try again.');
-      }
+    // Basic validation
+    if (!email || !validateEmail(email)) {
+        alert('Please enter a valid email address');
+        return;
     }
+
+    try {
+        const response = await fetch('/share/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, uploadId }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            successMessage.style.display = 'block';
+            emailInput.value = '';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        } else {
+            alert(result.message || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        alert('Failed to send email. Please try again.');
+    }
+}
+
+// Add email validation helper
+function validateEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
+
+    // Initialize
+    updateToggle();
+    window.addEventListener('resize', updateToggle);
   </script>
 </body>
 </html>
